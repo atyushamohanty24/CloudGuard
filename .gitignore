@@ -3,11 +3,17 @@ node_modules/
 frontend/node_modules/
 .pnp
 .pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 
 # Production build outputs
 dist/
 frontend/dist/
 build/
+.vite/
+frontend/.vite/
 
 # Python
 __pycache__/
@@ -31,11 +37,13 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Testing & Coverage
+# Testing, Coverage & Linters
 .pytest_cache/
 backend/.pytest_cache/
 .coverage
@@ -44,14 +52,36 @@ backend/.coverage
 htmlcov/
 coverage.xml
 *.cover
+.mypy_cache/
+.ruff_cache/
+.cache/
+.eslintcache
 
 # Environment Variables & Secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
 *.pem
 *.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# Local Databases & Logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+tmp/
+temp/
 
 # IDE & OS
 .vscode/
@@ -60,9 +90,18 @@ frontend/.env
 *.swo
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
-# Terraform
+# Terraform & Cloud Deployments
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
 .terraform/
 .terraform.lock.hcl
+.serverless/
+cdk.out/
+.aws-sam/
