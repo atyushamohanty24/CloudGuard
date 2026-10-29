@@ -1,9 +1,12 @@
 name: CloudGuard AI Continuous Deployment (OIDC)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Deployment Environment'
+        required: true
+        default: 'production'
 
 permissions:
   id-token: write # Required for AWS OIDC authentication
@@ -14,8 +17,6 @@ jobs:
     name: Deploy to AWS (Keyless OIDC)
     runs-on: ubuntu-latest
     environment: production
-    # Only run continuous deployment if AWS OIDC role secret has been configured
-    if: ${{ secrets.AWS_OIDC_ROLE_ARN != '' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
