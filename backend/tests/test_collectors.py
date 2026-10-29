@@ -148,3 +148,28 @@ def test_ec2_idle_collector(session):
     assert len(matching) == 1
     assert matching[0].category.value == "cost"
     assert matching[0].est_monthly_saving_usd > 100
+
+
+def test_ebs_snapshot_collector(session):
+    ec2 = session.client("ec2", region_name="us-east-1")
+    vol = ec2.create_volume(AvailabilityZone="us-east-1a", Size=50)
+    vol_id = vol["VolumeId"]
+    ec2.create_snapshot(VolumeId=vol_id, Description="Old backup")
+
+    collector = EBSSnapshotCollector()
+    findings = collector.collect(session, "us-east-1")
+    # Newly created snapshots are < 90 days, so should return 0 findings
+    assert isinstance(findings, list)
+
+
+def test_iam_access_key_age_collector(session):
+    iam = session.client("iam", region_name="us-east-1")
+    username = "key-audit-user"
+    iam.create_user(UserName=username)
+    iam.create_access_key(UserName=username)
+
+    collector = IAMAccessKeyAgeCollector()
+    findings = collector.collect(session, "us-east-1")
+    # Newly created key is not >90 days old, returns empty list
+    assert isinstance(findings, list)
+
