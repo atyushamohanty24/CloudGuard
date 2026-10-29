@@ -1,0 +1,59 @@
+name: CloudGuard AI Continuous Deployment (OIDC)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # Required for AWS OIDC authentication
+  contents: read
+
+jobs:
+  deploy-infra-and-app:
+    name: Deploy to AWS (Keyless OIDC)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-session-name: GitHubActions-CloudGuardDeploy
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.0'
+
+      - name: Terraform Init & Apply
+        working-directory: ./infra
+        run: |
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Frontend for Production
+        working-directory: ./frontend
+        env:
+          VITE_USE_MOCKS: 'false'
+          VITE_API_URL: ${{ steps.tf_outputs.outputs.api_gateway_endpoint }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Frontend to S3 & Invalidate CloudFront
+        run: |
+          S3_BUCKET=$(terraform -chdir=./infra output -raw frontend_s3_bucket)
+          CF_DIST_ID=$(terraform -chdir=./infra output -raw cloudfront_distribution_id)
+          aws s3 sync ./frontend/dist "s3://${S3_BUCKET}" --delete
+          aws cloudfront create-invalidation --distribution-id "${CF_DIST_ID}" --paths "/*"

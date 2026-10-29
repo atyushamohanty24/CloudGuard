@@ -1,0 +1,337 @@
+================================================================================
+                       CLOUGUARD AI - COMPLETE PROJECT GUIDE
+            Serverless AWS Cost & Security Posture Advisor with AI
+================================================================================
+
+TABLE OF CONTENTS:
+1. What is CloudGuard AI? (Simple Explanation & Summary)
+2. How It Works (High-Level Flow)
+3. Complete List of AWS Resources & Services Used
+4. Explanation of Each Frontend Page (in Easy Words)
+5. Security Guarantee: Why It Is 100% Safe (Read-Only)
+6. Quick Commands to Run the Project
+
+================================================================================
+1. WHAT IS CLOUGUARD AI? (SIMPLE EXPLANATION & SUMMARY)
+================================================================================
+CloudGuard AI is an automated "mission control" and intelligent cloud advisor 
+for Amazon Web Services (AWS). 
+
+In simple terms:
+- Companies spend thousands of dollars on AWS, and developers often forget about 
+  unused servers, unattached hard drives, or leave security loopholes open 
+  (like public databases or open ports to hackers).
+- CloudGuard AI automatically scans the AWS account, identifies wasted money 
+  and dangerous security misconfigurations, and uses Generative AI 
+  (Amazon Bedrock Claude 3.5 Sonnet) to explain the issues in plain, simple 
+  English (under 60 words) and show exact fix scripts.
+- It displays everything in an interactive, clean, glassmorphic dashboard 
+  with real-time posture scores, savings charts, and an AI chat assistant.
+
+Key Highlights:
+- Cost Optimization (FinOps): Finds idle EC2 servers, unattached EBS storage, 
+  stale backups, unassigned IP addresses, and sudden billing spikes.
+- Security Posture (CSPM): Detects open admin ports (SSH/RDP 22/3389), public 
+  S3 buckets, IAM user accounts without Multi-Factor Authentication (MFA), 
+  unrotated access keys, unencrypted volumes, and exposed databases.
+- Generative AI Synthesis: Bedrock Claude 3.5 Sonnet generates executive 
+  summaries and powers an interactive, grounded cloud assistant.
+- 100% Safe & Read-Only: It cannot delete or terminate anything in your AWS 
+  account; it only observes and advises.
+
+================================================================================
+2. HOW IT WORKS (HIGH-LEVEL FLOW)
+================================================================================
+1. AUDIT (Collectors):
+   Scheduled AWS Lambda functions trigger hourly or daily via Amazon EventBridge.
+   They connect to the target AWS account using a 100% read-only role and inspect
+   EC2, EBS, S3, IAM, and RDS resources.
+
+2. NORMALIZE & ENRICH (Normalizer Engine):
+   Raw findings are converted into a standard format (Category, Severity, 
+   Monthly Waste in $, Resource ID, and Evidence JSON).
+
+3. INTELLIGENCE (Amazon Bedrock):
+   Claude 3.5 Sonnet reads the finding and writes a concise plain-English 
+   summary explaining what happened and how to fix it, while generating display-only 
+   AWS CLI and Terraform remediation blueprints.
+
+4. STORAGE & CACHING:
+   Findings are stored in an encrypted Amazon DynamoDB table with Global 
+   Secondary Indexes (GSIs) for sub-second queries. Raw audit snapshots are 
+   archived to Amazon S3 with lifecycle transition to Glacier.
+
+5. DELIVERY (Dashboard & API):
+   An Amazon API Gateway routes requests to an API Lambda. The React frontend 
+   fetches data and renders radial health gauges, 12-month cost charts, 
+   the prioritized "Fix First" queue, and an AI chat slide-over.
+
+================================================================================
+3. COMPLETE LIST OF AWS RESOURCES & SERVICES USED
+================================================================================
+
+A. CORE SERVERLESS INFRASTRUCTURE & BACKEND
+--------------------------------------------------------------------------------
+1. Amazon Bedrock (Anthropic Claude 3.5 Sonnet)
+   - Generates <= 60-word plain-English summaries for each finding.
+   - Powers the RAG conversational AI Chat Advisor, answering natural questions 
+     (e.g., "Why did my bill spike?" or "What are my top 3 critical risks?").
+   - Uses Bedrock Guardrails to prevent hallucinations, enforce cloud-only topics, 
+     and automatically mask sensitive information (PII).
+
+2. AWS Lambda
+   - Serverless execution engine running Python 3.12+ code with zero server management.
+   - Runs the Cost Collectors, Security Collectors, Findings Normalizer, API Router, 
+     and Weekly Email Digest generator.
+
+3. Amazon DynamoDB
+   - Ultra-fast, serverless NoSQL database storing all active and resolved findings.
+   - Uses Customer-Managed KMS encryption at rest and Point-in-Time Recovery (PITR).
+   - Configured with 3 Global Secondary Indexes (GSIs) to instantly search findings 
+     by Severity, Category (Cost/Security), Resource ID, and Status (Open/Resolved).
+
+4. Amazon API Gateway (HTTP API)
+   - Modern, low-latency API gateway routing requests from the frontend to the 
+     backend Lambda handler (/summary, /findings, /costs/trend, /chat, /scan).
+   - Includes CORS configuration and Cognito JWT authorization.
+
+5. Amazon Cognito
+   - Handles enterprise user authentication, user pools, and secure login tokens 
+     for security and DevOps engineers accessing the dashboard.
+
+6. Amazon S3 (Simple Storage Service)
+   - S3 Web Hosting Bucket: Hosts the compiled React 18 / Vite single-page application.
+   - S3 Snapshot Archive Bucket: Stores raw JSON snapshots of every audit run with 
+     versioning and automatic transition to S3 Glacier for long-term audit compliance.
+
+7. Amazon CloudFront
+   - Global Content Delivery Network (CDN) serving the frontend dashboard worldwide 
+     with SSL/TLS and sub-100ms latency.
+   - Uses Origin Access Control (OAC) to ensure the private S3 bucket is only 
+     accessible through CloudFront.
+
+8. Amazon EventBridge
+   - Automated cloud cron scheduler.
+   - Fires hourly/daily rules to trigger collector audits and a weekly rule 
+     to trigger executive email digests.
+
+9. Amazon SNS (Simple Notification Service) / Amazon SES (Simple Email Service)
+   - Delivers instant alerts for critical security exposures and sends the weekly 
+     executive cost & security PDF/email digests to engineers.
+
+10. AWS KMS (Key Management Service)
+    - Manages cryptographic keys to encrypt all DynamoDB records, S3 buckets, 
+      and CloudWatch logs at rest.
+
+11. AWS IAM (Identity and Access Management)
+    - Manages cross-account access via `sts:AssumeRole`.
+    - Has an explicit `Deny` policy on all mutating actions (e.g. ec2:Terminate*, 
+      s3:Delete*, iam:Delete*) to mathematically guarantee safety.
+
+12. Amazon CloudWatch & AWS Budgets
+    - Centralized log streaming and alarms for Lambda functions.
+    - Monitors cost thresholds and alerts if AWS budget is exceeded.
+
+B. TARGET AWS SERVICES AUDITED BY CLOUGUARD AI
+--------------------------------------------------------------------------------
+13. Amazon EC2: Scans for running instances with <5% CPU usage over 14 days (idle waste).
+14. Amazon EBS: Finds unattached storage volumes and snapshots older than 90 days.
+15. Amazon VPC / Elastic IPs: Detects allocated Elastic IPs that are not attached to servers.
+16. Amazon S3: Detects public bucket access, missing public access blocks, and missing lifecycle rules.
+17. AWS IAM: Detects console users without Multi-Factor Authentication (MFA) and keys older than 90 days.
+18. Amazon RDS: Detects public PostgreSQL/MySQL database instances exposed to the open internet.
+19. AWS Cost Explorer: Analyzes 12-month billing trends and flags month-over-month spend spikes >25%.
+
+================================================================================
+4. EXPLANATION OF EACH FRONTEND PAGE (IN EASY WORDS)
+================================================================================
+
+The dashboard is built with React 18, TypeScript, Tailwind CSS, and Framer Motion. 
+Here is an easy explanation of every screen:
+
+--------------------------------------------------------------------------------
+PAGE 1: OVERVIEW SCREEN (Mission Control Dashboard)
+--------------------------------------------------------------------------------
+- Purpose: The main home page giving leaders and engineers an instant snapshot 
+  of their cloud health.
+- What you see:
+  1. Posture Score Arc Gauge (0 to 100): An animated circular score showing your 
+     overall health. Sub-scores break down Security (e.g. 74/100) and Cost 
+     Efficiency (e.g. 82/100).
+  2. Bedrock AI Executive Headline: A single plain-English sentence summarizing 
+     the biggest takeaway, e.g.: "You could save $2,485/mo and close 5 critical 
+     security exposures."
+  3. KPI Metric Cards: Quick numbers for Total Monthly Waste, Annual Projected Waste, 
+     Open Critical Issues, and Total Resources Scanned.
+  4. Savings Waterfall Bar: Visual breakdown of where wasted money is hiding 
+     ($984 in EBS hard drives, $550 in EC2 servers, $357 in DynamoDB, etc.).
+  5. Fix First Queue: Top 3 most urgent problems ranked by severity multiplied 
+     by monthly savings, so engineers know what to fix first.
+
+--------------------------------------------------------------------------------
+PAGE 2: FINDINGS SCREEN (Complete Issue Inventory)
+--------------------------------------------------------------------------------
+- Purpose: The master database of every single issue found in the AWS account.
+- What you see:
+  1. Filter Bar: Clickable filter chips to view only Cost findings, only Security 
+     findings, or filter by severity (Critical, High, Medium, Low), AWS service 
+     (EC2, S3, RDS, IAM, EBS), or status (Open vs. Resolved).
+  2. Search Box: Instant fuzzy search across resource IDs, descriptions, and rule names.
+  3. Finding Cards / List: Each item shows the title, impacted AWS resource, 
+     monthly dollar savings, rule ID badge, and date found.
+  4. Click-to-Inspect: Clicking any card slides open the Finding Detail Drawer.
+
+--------------------------------------------------------------------------------
+PAGE 3: FINDING DETAIL DRAWER (Deep-Dive Slide-Over)
+--------------------------------------------------------------------------------
+- Purpose: When an engineer clicks an issue, this panel slides in from the right 
+  with all details needed to understand and remediate it.
+- What you see:
+  1. Plain-English Bedrock AI Explanation: Explains why this is a risk in <=60 words.
+  2. Evidence Inspector: Collapsible formatted JSON showing the exact raw AWS 
+     metadata (e.g. open ports, CPU graph percentages, creation dates).
+  3. Copyable Remediation Blueprints: 
+     - AWS CLI tab: Ready-to-copy terminal command to remediate the issue.
+     - Terraform tab: Ready-to-copy code block to update infrastructure as code.
+     *(Remediation snippets are display-only for engineer review — never auto-executed).*
+  4. Mute / Resolve Actions: Allows engineers to mark items as resolved or muted.
+
+--------------------------------------------------------------------------------
+PAGE 4: COSTS SCREEN (FinOps & Spend Analytics)
+--------------------------------------------------------------------------------
+- Purpose: Dedicated screen for finance teams and DevOps to eliminate cloud waste.
+- What you see:
+  1. 12-Month Historical Spend Trajectory: Interactive chart showing month-by-month 
+     spending across AWS services.
+  2. Cost Anomaly Markers: Pulsing markers highlighting unusual spikes (e.g., 
+     "October: DynamoDB On-Demand +420% write spike in eu-west-1"). Clicking the 
+     marker opens the corresponding finding.
+  3. Service Savings Breakdown: Detailed breakdown showing how much money can be saved 
+     in EC2, EBS, S3, Elastic IPs, and RDS.
+  4. Waste Projections: Shows monthly vs. 3-year projected savings if recommended 
+     actions are taken.
+
+--------------------------------------------------------------------------------
+PAGE 5: SECURITY SCREEN (Cloud Security Posture Management - CSPM)
+--------------------------------------------------------------------------------
+- Purpose: Dedicated view for cybersecurity and security operations (SecOps) teams.
+- What you see:
+  1. Security Score Dial: Dedicated gauge highlighting your account's defense level.
+  2. Attack Surface Exposures: Critical cards showing internet-exposed admin ports 
+     (SSH port 22, RDP port 3389 open to 0.0.0.0/0).
+  3. IAM Identity Risks: Highlights console users missing MFA and active access keys 
+     older than 90 days that could be compromised.
+  4. Data Protection Checks: Highlights unencrypted EBS storage volumes and public 
+     S3 buckets lacking public access block.
+  5. Compliance Badges: Displays CIS AWS Benchmark and AWS Well-Architected alignment.
+
+--------------------------------------------------------------------------------
+PAGE 6: REPORTS SCREEN (Executive Briefings & Export)
+--------------------------------------------------------------------------------
+- Purpose: Generates polished summaries for engineering managers, CISOs, and CTOs.
+- What you see:
+  1. Weekly Digest Cards: Top 5 weekly risks, resolved items, and net cost change.
+  2. Scan History: Log of past audit scans, scan durations, and detected items.
+  3. One-Click Export: Buttons to download the posture report as PDF, CSV, or JSON 
+     for compliance audits.
+
+--------------------------------------------------------------------------------
+PAGE 7: SETTINGS SCREEN (Configuration & Connections)
+--------------------------------------------------------------------------------
+- Purpose: Manage cloud account connections, scan frequencies, and notification channels.
+- What you see:
+  1. AWS Connection Status: Shows connected AWS Account ID, Region, and the 
+     Cross-Account Read-Only Role ARN.
+  2. Scan Frequency Selector: Switch between Hourly, Daily, or Manual audit triggers.
+  3. Notification Channels: Toggle email alerts, Slack webhooks, and SNS topics 
+     for Critical severity issues.
+  4. Safety Guardrails Status: Confirms that "Read-Only Proxy Mode" is active and 
+     mutating operations are permanently disabled.
+
+--------------------------------------------------------------------------------
+PAGE 8: ONBOARDING SCREEN (New Account Connection Wizard)
+--------------------------------------------------------------------------------
+- Purpose: A friendly 3-step setup wizard when connecting a new AWS account.
+- What you see:
+  - Step 1: Download or copy the pre-built Read-Only IAM CloudFormation/Terraform template.
+  - Step 2: Paste the generated Cross-Account Role ARN and External ID.
+  - Step 3: Run the initial discovery audit and watch findings populate in real time.
+
+--------------------------------------------------------------------------------
+PAGE 9: LOGIN SCREEN (Authentication)
+--------------------------------------------------------------------------------
+- Purpose: Cognito-backed sign-in page for team members.
+- What you see: Clean login card with email and password fields, security assurances, 
+  and a prominent "100% Read-Only Guarantee" trust badge.
+
+--------------------------------------------------------------------------------
+GLOBAL COMPONENT: BEDROCK AI ASSISTANT (Slide-Over Drawer)
+--------------------------------------------------------------------------------
+- What it is: A full slide-over chat assistant accessible anywhere via the top bar 
+  or floating sparkle button.
+- What it does:
+  - Powered by Claude 3.5 Sonnet.
+  - Streams answers word-by-word with realistic typing speed.
+  - Grounded strictly in your audited AWS findings (no guessing).
+  - Provides clickable finding citation chips so you can jump straight to evidence.
+  - Suggests prompt pills: "Why did my bill increase?", "Show critical security risks", 
+    "How do I clean up old EBS snapshots?".
+
+--------------------------------------------------------------------------------
+GLOBAL COMPONENT: COMMAND PALETTE (Cmd+K / Ctrl+K)
+--------------------------------------------------------------------------------
+- What it is: An instant modal triggered by pressing `Ctrl+K` or `Cmd+K`.
+- What it does: Lets power users jump to any screen, search findings instantly, 
+  switch between Dark/Light mode, or trigger an audit scan in under a second.
+
+================================================================================
+5. SECURITY GUARANTEE: WHY IT IS 100% SAFE (READ-ONLY)
+================================================================================
+CloudGuard AI is built from the ground up to never modify, terminate, or delete 
+any client infrastructure:
+
+1. Code-Level Enforcement (`ReadOnlyClientProxy`):
+   Every boto3 client is wrapped in a proxy class. It only allows API calls 
+   starting with `describe_*`, `get_*`, and `list_*`. Any attempt to call mutating 
+   APIs (like `terminate_instances` or `delete_volume`) triggers a 
+   `ReadOnlyViolationError` and immediately halts execution.
+
+2. IAM Level Guardrails:
+   The AWS IAM role assumed by CloudGuard AI includes an explicit `Deny` statement 
+   on all mutating API calls (`ec2:Terminate*`, `s3:Delete*`, `iam:Delete*`, etc.).
+
+3. Display-Only Blueprints:
+   Remediation code snippets (CLI / Terraform) are rendered solely on screen for human 
+   review and copy-pasting. The application has no automated write/remediate pipeline.
+
+================================================================================
+6. QUICK COMMANDS TO RUN THE PROJECT
+================================================================================
+
+A. Start the Frontend Dashboard (React + Vite + Mock Data):
+   ```powershell
+   cd frontend
+   npm run dev
+   ```
+   Open browser at: http://localhost:3000/
+   (Runs immediately with zero backend required using ~40 realistic findings).
+
+B. Start the Local Python Backend API:
+   ```powershell
+   cd backend
+   python server.py
+   ```
+   Open browser at: http://localhost:8000/
+   (Serves /summary, /findings, /costs/trend, /chat, and /scan endpoints).
+
+C. Run All Backend Tests (24 tests, 87% coverage):
+   ```powershell
+   cd backend
+   python -m pytest tests -v
+   ```
+
+================================================================================
+Document generated on: 2026-10-28
+Project: CloudGuard AI
+================================================================================
+
