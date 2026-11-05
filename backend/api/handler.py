@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from decimal import Decimal
 from typing import Any, Dict
 import boto3
 from normalizer.schema import SummaryMetrics, PostureScore
@@ -8,6 +9,13 @@ from ai.chat_assistant import CloudGuardChatAssistant
 
 logger = logging.getLogger("cloudguard.api")
 DYNAMODB_TABLE = os.getenv("DYNAMODB_FINDINGS_TABLE", "cloudguard_findings")
+
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj) if "." in str(obj) else int(obj)
+        return super().default(obj)
 
 
 def get_dynamodb_client():
@@ -123,7 +131,7 @@ def handle_get_findings(params: Dict[str, str], headers: Dict[str, str]) -> Dict
     except Exception:
         items = []
 
-    return {"statusCode": 200, "headers": headers, "body": json.dumps({"findings": items, "count": len(items)})}
+    return {"statusCode": 200, "headers": headers, "body": json.dumps({"findings": items, "count": len(items)}, cls=DecimalEncoder)}
 
 
 def handle_get_finding_by_id(finding_id: str, headers: Dict[str, str]) -> Dict[str, Any]:
@@ -134,7 +142,7 @@ def handle_get_finding_by_id(finding_id: str, headers: Dict[str, str]) -> Dict[s
         resp = table.get_item(Key={"id": finding_id})
         item = resp.get("Item")
         if item:
-            return {"statusCode": 200, "headers": headers, "body": json.dumps(item)}
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(item, cls=DecimalEncoder)}
     except Exception:
         pass
 

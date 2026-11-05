@@ -64,6 +64,8 @@ ExecStart=/usr/bin/python3 /home/ec2-user/CloudGuard/backend/server.py 8000
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=AWS_DEFAULT_REGION=ap-south-1
+Environment=DYNAMODB_FINDINGS_TABLE=cloudguard_findings
 
 [Install]
 WantedBy=multi-user.target

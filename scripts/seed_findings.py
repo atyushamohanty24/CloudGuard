@@ -148,6 +148,17 @@ SAMPLE_SEED_ITEMS = [
 ]
 
 
+from decimal import Decimal
+
+def float_to_decimal(obj):
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: float_to_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [float_to_decimal(v) for v in obj]
+    return obj
+
 def seed_findings():
     print(f"Connecting to DynamoDB in {REGION}...")
     ddb = boto3.resource("dynamodb", region_name=REGION)
@@ -156,10 +167,11 @@ def seed_findings():
     print(f"Seeding {len(SAMPLE_SEED_ITEMS)} findings into '{TABLE_NAME}'...")
     with table.batch_writer() as batch:
         for item in SAMPLE_SEED_ITEMS:
-            batch.put_item(Item=item.to_dynamodb_item())
+            item_dict = float_to_decimal(item.to_dynamodb_item())
+            batch.put_item(Item=item_dict)
             print(f"  + Seeded: {item.id} — {item.title}")
 
-    print("\n✓ Successfully seeded findings table.")
+    print("\n[SUCCESS] Successfully seeded findings table.")
 
 
 if __name__ == "__main__":
